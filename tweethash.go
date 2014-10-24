@@ -33,7 +33,7 @@ func main() {
 	starts := make([]int64, cpus)
 
 	for w := 0; w < cpus; w++ {
-		starts[w] = rand.Int63()
+		starts[w] = rand.Int63n(72057594037927935)
 		go getHash(results, counter, starts[w])
 	}
 
