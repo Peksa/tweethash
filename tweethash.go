@@ -8,6 +8,7 @@ import (
 	"time"
 	"math/rand"
 	"net/http"
+	"strconv"
 )
 
 type Attempt struct {
@@ -33,7 +34,7 @@ func main() {
 	starts := make([]int64, cpus)
 
 	for w := 0; w < cpus; w++ {
-		starts[w] = rand.Int63n(72057594037927935)
+		starts[w] = rand.Int63n(131621703842267136)
 		go getHash(results, counter, starts[w])
 	}
 
@@ -41,7 +42,7 @@ func main() {
 	total := 0
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Speed: %.0f\nLowest: %x %x\nStarts: %d", speed, bestAttempt.id, bestAttempt.hash, starts)
+		fmt.Fprintf(w, "Speed: %.0f\nLowest: %s %x\nStarts: %d", speed, strconv.FormatInt(bestAttempt.id, 36), bestAttempt.hash, starts)
 	})
 
 	go http.ListenAndServe(":8080", nil)
@@ -51,7 +52,7 @@ func main() {
 		select {
 		case attempt := <- results:
 			if bytes.Compare(attempt.hash, bestAttempt.hash) == -1 {
-				fmt.Printf("%x: %x\n", attempt.id, attempt.hash)
+				fmt.Printf("%s: %x\n", strconv.FormatInt(attempt.id, 36), attempt.hash)
 				bestAttempt = attempt
 			}
 		default:
@@ -78,9 +79,9 @@ func getHash(results chan<- Attempt, counter chan<- int, start int64) {
 	count := 0
 	for {
 		h := sha256.New()
-		h.Write([]byte("https://twitter.com/p"))
-		h.Write([]byte(fmt.Sprintf("%x", start)))
-		h.Write([]byte("/status/525644140865142784"))
+		h.Write([]byte{'h','t','t','p','s',':','/','/','t','w','i','t','t','e','r','.','c','o','m','/','p','e','k','_'})
+		h.Write([]byte(strconv.FormatInt(start, 36)))
+		h.Write([]byte{'/','s','t','a','t','u','s','/','5','2','5','6','4','4','1','4','0','8','6','5','1','4','2','7','8','4'})
 		hash := h.Sum(nil)
 
 		if bytes.Compare(hash, bestAttempt) == -1 {

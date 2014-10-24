@@ -13,6 +13,6 @@ type Attempt struct {
 
 func main() {
 	h := sha256.New()
-	io.WriteString(h, "https://twitter.com/p57e9d1860d1fef96/status/525644140865142784")
+	io.WriteString(h, "https://twitter.com/pek_wx2mdudiba4/status/525644140865142784")
 	fmt.Printf("%x\n", h.Sum(nil))
 }
