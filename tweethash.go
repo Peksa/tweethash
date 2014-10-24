@@ -20,6 +20,8 @@ func main() {
 
 	runtime.GOMAXPROCS(cpus)
 
+	rand.Seed(time.Now().UnixNano())
+
 	bestAttempt := Attempt{0, make([]byte, 32)}
 	bestAttempt.hash[0] = 0xff
 
