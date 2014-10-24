@@ -39,7 +39,7 @@ func main() {
 	total := 0
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Speed: %.0f\nLowest: %x %x\n", speed, bestAttempt.id, bestAttempt.hash)
+		fmt.Fprintf(w, "Speed: %.0f\nLowest: %x %x\nStarts: %d", speed, bestAttempt.id, bestAttempt.hash, starts)
 	})
 
 	go http.ListenAndServe(":8080", nil)
