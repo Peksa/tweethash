@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 	"math/rand"
+	"net/http"
 )
 
 type Attempt struct {
@@ -19,28 +20,37 @@ func main() {
 
 	runtime.GOMAXPROCS(cpus)
 
-	bestAttempt := make([]byte, 32)
-	bestAttempt[0] = 0xff
+	bestAttempt := Attempt{0, make([]byte, 32)}
+	bestAttempt.hash[0] = 0xff
 
 	results := make(chan Attempt, 5000000)
 	counter := make(chan int, 5000000)
 
-	starts := make([]int, cpus)
+	speed := 0.0
+
+	starts := make([]int64, cpus)
 
 	for w := 0; w < 8; w++ {
-		start[w] = rand.Int63()
-		go getHash(results, counter, start[w])
+		starts[w] = rand.Int63()
+		go getHash(results, counter, starts[w])
 	}
 
 	start := time.Now()
 	total := 0
 
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Speed: %.0f\nLowest: %x %x\n", speed, bestAttempt.id, bestAttempt.hash)
+	})
+
+	go http.ListenAndServe(":8080", nil)
+
+
 	for {
 		select {
 		case attempt := <- results:
-			if bytes.Compare(attempt.hash, bestAttempt) == -1 {
+			if bytes.Compare(attempt.hash, bestAttempt.hash) == -1 {
 				fmt.Printf("%x: %x\n", attempt.id, attempt.hash)
-				bestAttempt = attempt.hash
+				bestAttempt = attempt
 			}
 		default:
 		}
@@ -50,7 +60,8 @@ func main() {
 			total += count
 			if total > 10000000 {
 				millis := int64(time.Now().Sub(start)/time.Millisecond)
-				fmt.Printf("Speed: %.2fM/s\n", float64(total)/float64(millis)/1000)
+				speed = float64(total)/float64(millis)*1000
+				fmt.Printf("Speed: %.2fM/s\n", speed/1000000)
 				start = time.Now()
 				total = 0
 			}
