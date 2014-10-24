@@ -16,7 +16,7 @@ type Attempt struct {
 }
 
 func main() {
-	cpus := 8
+	cpus := 128
 
 	runtime.GOMAXPROCS(cpus)
 
@@ -32,7 +32,7 @@ func main() {
 
 	starts := make([]int64, cpus)
 
-	for w := 0; w < 8; w++ {
+	for w := 0; w < cpus; w++ {
 		starts[w] = rand.Int63()
 		go getHash(results, counter, starts[w])
 	}
@@ -90,7 +90,7 @@ func getHash(results chan<- Attempt, counter chan<- int, start int64) {
 
 		start++
 		count++
-		if count > 500000 {
+		if count > 10000 {
 			counter <- count
 			count = 0
 		}
