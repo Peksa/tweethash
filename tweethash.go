@@ -1,25 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"bytes"
-	"runtime"
-	"time"
 	"math/rand"
 	"net/http"
+	"runtime"
 	"strconv"
+	"time"
 )
 
 type Attempt struct {
-	id int64
+	id   int64
 	hash []byte
 }
 
 func main() {
-	cpus := 128
-
-	runtime.GOMAXPROCS(cpus)
+	workers := 128
+	runtime.GOMAXPROCS(workers)
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -31,26 +30,24 @@ func main() {
 
 	speed := 0.0
 
-	starts := make([]int64, cpus)
+	workerStarts := make([]int64, workers)
 
-	for w := 0; w < cpus; w++ {
-		starts[w] = rand.Int63n(131621703842267136)
-		go getHash(results, counter, starts[w])
+	for w := 0; w < workers; w++ {
+		workerStarts[w] = rand.Int63n(131621703842267136)
+		go startWorker(results, counter, workerStarts[w])
 	}
-
 	start := time.Now()
 	total := 0
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Speed: %.0f\nLowest: %s %x\nStarts: %d", speed, strconv.FormatInt(bestAttempt.id, 36), bestAttempt.hash, starts)
+	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintf(w, "Speed: %.0f\nLowest: %s %x\nStarts: %d", speed, strconv.FormatInt(bestAttempt.id, 36), bestAttempt.hash, workerStarts)
 	})
 
 	go http.ListenAndServe(":8080", nil)
 
-
 	for {
 		select {
-		case attempt := <- results:
+		case attempt := <-results:
 			if bytes.Compare(attempt.hash, bestAttempt.hash) == -1 {
 				fmt.Printf("%s: %x\n", strconv.FormatInt(attempt.id, 36), attempt.hash)
 				bestAttempt = attempt
@@ -59,11 +56,11 @@ func main() {
 		}
 
 		select {
-		case count := <- counter:
+		case count := <-counter:
 			total += count
 			if total > 10000000 {
-				millis := int64(time.Now().Sub(start)/time.Millisecond)
-				speed = float64(total)/float64(millis)*1000
+				millis := time.Now().Sub(start) / time.Millisecond
+				speed = float64(total) / float64(millis) * 1000
 				fmt.Printf("Speed: %.2fM/s\n", speed/1000000)
 				start = time.Now()
 				total = 0
@@ -73,23 +70,27 @@ func main() {
 	}
 }
 
-func getHash(results chan<- Attempt, counter chan<- int, start int64) {
+func startWorker(results chan<- Attempt, counter chan<- int, currentValue int64) {
 	bestAttempt := make([]byte, 32)
 	bestAttempt[0] = 0xff
 	count := 0
+
+	prefix := []byte{'h', 't', 't', 'p', 's', ':', '/', '/', 't', 'w', 'i', 't', 't', 'e', 'r', '.', 'c', 'o', 'm', '/', 'p', 'e', 'k', '_'}
+	suffix := []byte{'/', 's', 't', 'a', 't', 'u', 's', '/', '5', '2', '5', '6', '4', '4', '1', '4', '0', '8', '6', '5', '1', '4', '2', '7', '8', '4'}
+
 	for {
 		h := sha256.New()
-		h.Write([]byte{'h','t','t','p','s',':','/','/','t','w','i','t','t','e','r','.','c','o','m','/','p','e','k','_'})
-		h.Write([]byte(strconv.FormatInt(start, 36)))
-		h.Write([]byte{'/','s','t','a','t','u','s','/','5','2','5','6','4','4','1','4','0','8','6','5','1','4','2','7','8','4'})
+		h.Write(prefix)
+		h.Write([]byte(strconv.FormatInt(currentValue, 36)))
+		h.Write(suffix)
 		hash := h.Sum(nil)
 
 		if bytes.Compare(hash, bestAttempt) == -1 {
-			results <- Attempt{start, hash}
+			results <- Attempt{currentValue, hash}
 			bestAttempt = hash
 		}
 
-		start++
+		currentValue++
 		count++
 		if count > 10000 {
 			counter <- count
